@@ -28,16 +28,16 @@ POSTS = [
    "alt": "Rumpled linen bedding with a sprig of lavender, lit by moonlight from a tall window",
    "excerpt": "A slow, guided journey through the body to help you unclench and drift toward sleep, with an interactive scan to follow in the dark.",
    "date": "November 1, 2026", "iso": "2026-11-01", "read": "8 min read"},
-  {"slug": "tea-ritual", "title": "The tea ritual: one cup, fully tasted", "cat": "Mindful Living", "img": "post-living",
-   "alt": "Two hands cupping a speckled ceramic tea bowl on a linen cloth beside eucalyptus leaves",
+  {"slug": "tea-ritual", "title": "The tea ritual: one cup, fully tasted", "cat": "Mindful Living", "img": "post-living-v2",
+   "alt": "A steaming speckled ceramic tea bowl on a linen cloth beside sprigs of eucalyptus in soft morning light",
    "excerpt": "How a single cup of tea, made and drunk with attention, can become a daily moment of rest.",
    "date": "November 1, 2026", "iso": "2026-11-01", "read": "7 min read"},
-  {"slug": "loving-kindness", "title": "Loving-kindness: a gentle practice for a softer heart", "cat": "Meditation Basics", "img": "post-kindness",
-   "alt": "Two cupped hands holding a small glowing tealight in a dusky lavender room",
+  {"slug": "loving-kindness", "title": "Loving-kindness: a gentle practice for a softer heart", "cat": "Meditation Basics", "img": "post-kindness-v2",
+   "alt": "A single glowing candle and a small bowl of rose petals on a windowsill at lavender dusk",
    "excerpt": "Four simple phrases, offered in widening circles. A warm, beginner-friendly introduction to metta meditation.",
    "date": "October 31, 2026", "iso": "2026-10-31", "read": "8 min read"},
-  {"slug": "grounding-5-4-3-2-1", "title": "5-4-3-2-1: a grounding practice for busy minds", "cat": "Meditation Basics", "img": "post-grounding",
-   "alt": "Bare feet resting on soft moss and smooth stones beside a misty forest stream",
+  {"slug": "grounding-5-4-3-2-1", "title": "5-4-3-2-1: a grounding practice for busy minds", "cat": "Meditation Basics", "img": "post-grounding-v2",
+   "alt": "Soft moss, smooth stones and unfurling ferns beside a misty forest stream",
    "excerpt": "When your thoughts are racing ahead, your senses can bring you home. A five-step practice you can do anywhere.",
    "date": "October 31, 2026", "iso": "2026-10-31", "read": "7 min read"},
   {"slug": "evening-wind-down", "title": "A 20-minute evening wind-down", "cat": "Sleep & Rest", "img": "post-winddown",
@@ -192,7 +192,7 @@ def home():
       <div class="section-head reveal"><div><span class="eyebrow">Practice with us</span><h2 id="pf-h" style="margin:0">Don't just read. Breathe along.</h2></div><p>Interactive tools and guided meditations, right here in your browser. No sign-up, no app, nothing to install.</p></div>
       <div class="feature-duo">
         <a class="feature reveal" href="practice.html">
-          <img src="assets/images/post-grounding-sm.webp" srcset="assets/images/post-grounding-sm.webp 640w, assets/images/post-grounding.webp 1152w" sizes="(max-width:960px) 100vw, 50vw" alt="Bare feet resting on soft moss and smooth stones beside a misty forest stream" width="1152" height="864" loading="lazy">
+          <img src="assets/images/post-grounding-v2-sm.webp" srcset="assets/images/post-grounding-v2-sm.webp 640w, assets/images/post-grounding-v2.webp 1152w" sizes="(max-width:960px) 100vw, 50vw" alt="Soft moss, smooth stones and unfurling ferns beside a misty forest stream" width="1152" height="864" loading="lazy">
           <div class="feature-body"><span class="eyebrow">Interactive practices</span><h3>The practice room</h3><p>A meditation timer with a gentle bell, a guided body scan, 5-4-3-2-1 grounding, and a loving-kindness flow.</p>
             <ul class="feature-list"><li>Meditation timer</li><li>Body scan</li><li>Grounding</li><li>Loving-kindness</li><li>Breathing circle</li></ul><span class="go">Open the practice room →</span></div>
         </a>
@@ -398,7 +398,7 @@ def practice():
         out.append(f'''<section class="practice-block" id="{bid}" aria-labelledby="{bid}-h"><div class="container practice-grid">
       <div class="practice-copy reveal"><span class="eyebrow">{name}</span><h2 id="{bid}-h">{h}</h2><p>{desc}</p><ul>{lis}</ul><p class="more"><a href="{link}">Read: {ltitle} →</a></p></div>
       <div class="reveal d1">{tool}</div></div></section>''')
-    return head("Practice", "Interactive meditation tools from Willowhush: a meditation timer with a gentle bell, a guided body scan, 5-4-3-2-1 grounding, a loving-kindness flow, and a breathing circle.", "practice.html", r, img="post-grounding.webp") + header(r, "Practice") + f'''
+    return head("Practice", "Interactive meditation tools from Willowhush: a meditation timer with a gentle bell, a guided body scan, 5-4-3-2-1 grounding, a loving-kindness flow, and a breathing circle.", "practice.html", r, img="post-grounding-v2.webp") + header(r, "Practice") + f'''
 <main id="main">
   <header class="page-hero"><div class="container">
     <span class="eyebrow reveal">The practice room</span>
