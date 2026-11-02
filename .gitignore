@@ -14,3 +14,7 @@ redeploy-shippage.sh
 *~
 .vscode/
 .idea/
+# Ebook: never commit the full book. Only the free sample PDF is allowed in the repo.
+*.pdf
+!src/assets/ebook/good-vibrations-sample.pdf
+!docs/assets/ebook/good-vibrations-sample.pdf

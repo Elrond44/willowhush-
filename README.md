@@ -28,6 +28,7 @@ Always commit the rebuilt `docs/` together with the source change; Pages serves 
 
 - `build.py`: page templates, site settings (name, tagline, URL), and the post list (titles, categories, dates, images)
 - `src/posts/*.html`: article bodies
+- `ebook.py`: the Ebook page, home-page feature and journal promo card (book data, chapters, quotes, FAQ, buy box)
 - `practices.py`: markup for the interactive tools (timer, body scan, grounding, loving-kindness, breathing circle) and the guided-session data (captions + timings)
 - `src/assets/css/style.css`, `src/assets/js/main.js`: styles and core interactions (scroll reveals, mobile menu, blog filters, breathing widget, placeholder forms)
 - `src/assets/js/practice.js`: interactive practices, the guided video player, and the exercise checklists (ticks saved in localStorage)
@@ -50,6 +51,39 @@ To add a post, write `src/posts/<slug>.html`, add an entry to `POSTS` in `build.
 Edit captions and timings in `SESSIONS` (practices.py). Captions also serve as the narration script; re-render the voice with
 `PIPER=/path/to/piper VOICE=/path/to/en_GB-cori-high.onnx python3 make_narration.py` (Piper TTS, offline; the Cori voice is trained on public-domain LibriVox recordings).
 The player keeps its own session clock and the narration follows it; if the audio can't load, the voice toggle falls back to the browser's speechSynthesis.
+
+## Ebook: *Good Vibrations* (pay what you want)
+The Ebook page (`ebook.html`, built by `ebook.py`) sells the 52-page PDF *Good Vibrations* on a pay-what-you-want basis
+(suggested $5 / $9 / $15 or a custom amount, minimum $1). It is linked from the main nav, the footer, a feature section on the
+home page, and a promo card at the end of every journal post and on the journal index.
+
+**Never commit the full book.** Only the free sample is public: `src/assets/ebook/good-vibrations-sample.pdf`
+(book pages 1-9: cover, title page, contents, introduction and all of Chapter 1, plus a closing "get the full book" page).
+`.gitignore` ignores every other `*.pdf`, and `build.py` refuses to build if any other PDF ends up in `docs/`.
+
+### Connecting checkout
+1. Create a pay-what-you-want product on your platform and upload the **full** PDF there (not to this repo):
+   - **Gumroad**: set the price to $1 and tick "Allow customers to pay what they want" (suggested price $9).
+   - **Lemon Squeezy**: product pricing "Pay what you want", minimum $1, suggested $9.
+   - **Payhip**: pricing "Pay what you want", minimum $1.
+   - **Ko-fi Shop**: add a digital product and enable "pay what you want" with a $1 minimum.
+2. Copy the product's public link and paste it into `build.py`:
+
+       EBOOK_CHECKOUT_URL = "https://yourname.gumroad.com/l/good-vibrations"
+
+3. Optional: if your platform supports pre-filling the amount through a URL query parameter, set `EBOOK_PRICE_PARAM`
+   (e.g. `"price"`) and the reader's chosen amount is appended to the link. Check your platform's docs first; when in doubt
+   leave it empty, since every platform above lets the buyer type the amount at checkout.
+4. `python3 build.py`, commit, push.
+
+While `EBOOK_CHECKOUT_URL` is empty, the buy box shows a disabled "Checkout coming soon" state and offers the free sample
+instead, so there is never a broken buy link. Suggested amounts, minimum and the book details live in `EBOOK` in `ebook.py`.
+
+### Regenerating the ebook assets
+If the book changes, rebuild the sample, cover, social card and page previews from the full PDF (kept outside the repo):
+
+    python3 tools/make_ebook_assets.py /path/to/good-vibrations.pdf   # needs poppler-utils + Pillow (Playwright optional)
+    python3 build.py
 
 ## Notes
 - The public base URL is `https://elrond44.github.io/willowhush-/` (`SITE["url"]` in build.py, and in `src/robots.txt`). Canonical/OG URLs and `sitemap.xml` use it; change both if you move to a custom domain.

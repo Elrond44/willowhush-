@@ -74,4 +74,30 @@
       b.setAttribute('aria-pressed','true'); pattern=b.dataset.pattern; if(running){clearTimeout(timer);clearInterval(tick);step(0);}
     }));
   }
+  // Ebook: pay-what-you-want amount picker. The checkout link comes from EBOOK_CHECKOUT_URL in build.py;
+  // with no link configured the box renders in a "coming soon" state and this does nothing.
+  document.querySelectorAll('[data-pwyw]').forEach(box=>{
+    if(box.dataset.state!=='live') return;
+    const chips=box.querySelectorAll('[data-amount]'), custom=box.querySelector('.pwyw-custom'), input=box.querySelector('#pwyw-amt'),
+          err=box.querySelector('.pwyw-err'), buy=box.querySelector('.btn-buy'), label=box.querySelector('.pwyw-label');
+    const min=parseFloat(box.dataset.min)||1, cur=box.dataset.currency||'$', param=box.dataset.priceParam, base=buy.dataset.checkout;
+    let amount=parseFloat((box.querySelector('[data-amount][aria-pressed="true"]')||{}).dataset?.amount)||min;
+    const fmt=n=>cur+(Number.isInteger(n)?n:n.toFixed(2));
+    const update=()=>{
+      const ok=amount>=min && isFinite(amount);
+      err.textContent=ok?'':`Please enter at least ${fmt(min)}.`;
+      label.textContent=ok?'· '+fmt(amount):'';
+      buy.classList.toggle('is-invalid',!ok); buy.setAttribute('aria-disabled',ok?'false':'true');
+      if(param && ok){const u=new URL(base,location.href);u.searchParams.set(param,String(amount));buy.href=u.toString();} else buy.href=base;
+    };
+    chips.forEach(c=>c.addEventListener('click',()=>{
+      chips.forEach(x=>x.setAttribute('aria-pressed','false')); c.setAttribute('aria-pressed','true');
+      if(c.dataset.amount==='custom'){custom.hidden=false; amount=parseFloat(input.value); input.focus();}
+      else {custom.hidden=true; amount=parseFloat(c.dataset.amount);}
+      update();
+    }));
+    input.addEventListener('input',()=>{amount=parseFloat(input.value); update();});
+    buy.addEventListener('click',e=>{ if(buy.getAttribute('aria-disabled')==='true'){e.preventDefault(); input.focus();} });
+    update();
+  });
 })();

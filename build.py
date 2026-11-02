@@ -4,12 +4,22 @@ Run:  python3 build.py   ->  writes the finished static site to ./docs (served b
 No dependencies beyond the Python standard library."""
 import shutil, re, html
 from practices import SESSIONS, session_player, timer_tool, bodyscan_tool, grounding_tool, kindness_tool, breathe_widget, embed
+from ebook import ebook_page, home_feature as ebook_home_feature, promo_card as ebook_promo
 from pathlib import Path
 
 ROOT = Path(__file__).parent
 SRC, DIST = ROOT / "src", ROOT / "docs"   # docs/ is what GitHub Pages publishes
 SITE = {"name": "Willowhush", "tagline": "Quiet practices for a gentler mind",
         "url": "https://elrond44.github.io/willowhush-/", "desc": "Willowhush is a meditation and mindfulness journal: gentle, practical guides to meditation, breathwork, mindful living, and restful sleep."}
+
+# ---- Ebook checkout -------------------------------------------------------------------------------
+# Paste the link to your pay-what-you-want product here (Gumroad, Lemon Squeezy, Ko-fi, Payhip...), e.g.
+#   EBOOK_CHECKOUT_URL = "https://yourname.gumroad.com/l/good-vibrations"
+# While it is empty, the Ebook page shows a "Checkout coming soon" state and points readers to the free sample.
+EBOOK_CHECKOUT_URL = ""
+# Optional: if your checkout accepts a pre-filled amount as a query parameter, put its name here and the
+# chosen amount is appended (e.g. "...?price=9"). Leave empty to let readers enter the amount at checkout.
+EBOOK_PRICE_PARAM = ""
 
 LOGO = '''<svg viewBox="0 0 40 40" aria-hidden="true" fill="none"><circle cx="20" cy="20" r="18.5" stroke="currentColor" stroke-width="1.2" opacity=".55"/><path d="M20 6c0 9-1 18-6 27M20 6c1 8 4 15 10 22M20 6c-2 7-6 12-12 15" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="20" cy="6" r="1.6" fill="currentColor"/></svg>'''
 
@@ -93,7 +103,7 @@ def head(title, desc, path, r, img="og-image.jpg", otype="website"):
 </head>'''
 
 def header(r, active, hero=False):
-    links = [("Home", "index.html"), ("Journal", "blog/index.html"), ("Practice", "practice.html"), ("Guided", "guided.html"), ("About", "about.html"), ("Contact", "contact.html")]
+    links = [("Home", "index.html"), ("Journal", "blog/index.html"), ("Practice", "practice.html"), ("Guided", "guided.html"), ("Ebook", "ebook.html"), ("About", "about.html"), ("Contact", "contact.html")]
     lis = "".join(f'<li><a href="{r}{h}"{" aria-current=\"page\"" if n==active else ""}>{n}</a></li>' for n, h in links)
     return f'''<body class="{'hero-page' if hero else ''}">
 <a class="skip" href="#main">Skip to content</a>
@@ -112,7 +122,7 @@ def footer(r, extra_js=False):
     <div class="footer-grid">
       <div><a class="brand" href="{r}index.html">{LOGO}<span>{SITE['name']}</span></a>
         <p style="max-width:340px">{SITE['tagline']}. Gentle, practical guides for meditation, breath, and a slower way of being.</p></div>
-      <div><h4>Explore</h4><ul><li><a href="{r}index.html">Home</a></li><li><a href="{r}blog/index.html">Journal</a></li><li><a href="{r}practice.html">Practice</a></li><li><a href="{r}guided.html">Guided meditations</a></li><li><a href="{r}about.html">About</a></li><li><a href="{r}contact.html">Contact</a></li></ul></div>
+      <div><h4>Explore</h4><ul><li><a href="{r}index.html">Home</a></li><li><a href="{r}blog/index.html">Journal</a></li><li><a href="{r}practice.html">Practice</a></li><li><a href="{r}guided.html">Guided meditations</a></li><li><a href="{r}ebook.html">Ebook: Good Vibrations</a></li><li><a href="{r}about.html">About</a></li><li><a href="{r}contact.html">Contact</a></li></ul></div>
       <div><h4>Topics</h4><ul>{cats}</ul></div>
     </div>
     <div class="footer-bottom"><span>© 2026 {SITE['name']}. Written with care.</span><span>Breathe in. Breathe out. You're here.</span></div>
@@ -194,6 +204,7 @@ def home():
       </div>
     </div>
   </section>
+{ebook_home_feature(r)}
   <section class="breathe" id="breathe" aria-labelledby="breathe-h">
     <div class="container">
       <span class="eyebrow">An interlude</span>
@@ -253,6 +264,7 @@ def blog_index():
     <div class="filters reveal" role="group" aria-label="Filter articles by category">{btns}</div>
     <div class="grid">{rest}{soon}</div>
     <p class="empty-state" hidden style="text-align:center;color:var(--muted)">Nothing here yet. New pieces are on their way.</p>
+    <div class="promo-wrap">{ebook_promo(r)}</div>
   </div></section>
 </main>
 <script>
@@ -285,6 +297,7 @@ def post_page(p):
       <img class="avatar" src="../assets/images/about-sm.webp" alt="Candles glowing on a wooden bench, the Willowhush emblem image">
       <p><strong style="color:var(--dusk-deep)">Written by Elrond</strong><br>Founder of Willowhush. Practicing, forgetting, and beginning again, one breath at a time. <a href="../about.html">More about Willowhush →</a></p>
     </div>
+    <div class="narrow">{ebook_promo(r)}</div>
   </article>
   <section class="posts" aria-labelledby="more-h"><div class="container">
     <div class="section-head reveal"><div><span class="eyebrow">Keep reading</span><h2 id="more-h" style="margin:0">More gentle practices</h2></div></div>
@@ -426,11 +439,14 @@ def build():
     for f in ["favicon.svg", "favicon-32.png", "apple-touch-icon.png", "robots.txt"]:
         if (SRC / f).exists(): shutil.copy(SRC / f, DIST / f)
     (DIST / "blog").mkdir()
-    pages = {"index.html": home(), "practice.html": practice(), "guided.html": guided(), "about.html": about(), "contact.html": contact(), "blog/index.html": blog_index()}
+    pages = {"index.html": home(), "practice.html": practice(), "guided.html": guided(), "ebook.html": ebook_page("", EBOOK_CHECKOUT_URL, head, header, footer, BASE, EBOOK_PRICE_PARAM), "about.html": about(), "contact.html": contact(), "blog/index.html": blog_index()}
     for p in POSTS: pages[f"blog/{p['slug']}.html"] = post_page(p)
     for path, content in pages.items(): (DIST / path).write_text(content)
     urls = "".join(f"<url><loc>{BASE}/{p.replace('index.html','')}</loc></url>" for p in pages)
     (DIST / "sitemap.xml").write_text(f'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{urls}</urlset>')
+    # Safety net: the only PDF allowed on the public site is the free sample (the full ebook is sold, never published)
+    stray = [p for p in DIST.rglob("*.pdf") if p.name != "good-vibrations-sample.pdf"]
+    if stray: raise SystemExit(f"Refusing to publish PDFs other than the ebook sample: {stray}")
     (DIST / ".nojekyll").write_text("")   # serve files as-is on GitHub Pages
     print("Built", len(pages), "pages ->", DIST)
 
