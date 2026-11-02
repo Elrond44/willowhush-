@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.pyc
+# Old build output location (the site now builds to docs/)
+dist/
+# Local-only files: screenshots, deploy records (contain tokens), ad-hoc deploy scripts
+screenshots/
+shippage-deploy*.json
+redeploy-shippage.sh
+*.zip
+# Editor / OS clutter
+.DS_Store
+*.swp
+*~
+.vscode/
+.idea/
