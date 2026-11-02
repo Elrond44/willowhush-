@@ -1,6 +1,11 @@
 """Willowhush: HTML for the interactive practice tools and data for the guided sessions.
 Imported by build.py (pages) and make_narration.py (voice audio)."""
 import json, html
+from pathlib import Path
+
+# speech start/end per cue, written by make_narration.py; the player ducks the music under these spans
+_T = Path(__file__).parent / "narration_timing.json"
+SPEECH = json.loads(_T.read_text()) if _T.exists() else {}
 
 # ---------------------------------------------------------------- guided sessions
 # cues: [seconds, caption]. Captions double as the narration script.
@@ -94,20 +99,22 @@ SESSIONS = [
 
 PLAY_ICON = '<svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg><svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 5h3v14h-3zM13.5 5h3v14h-3z" fill="currentColor"/></svg>'
 VOICE_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 10v4M8 7v10M12 4v16M16 8v8M20 11v2"/></svg>'
+MUSIC_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/></svg>'
 FS_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>'
 
 def fmt(s): return f"{s//60}:{s%60:02d}"
 
 def session_player(s, r, heading="h2"):
     v = f"{r}assets/video/{s['clip']}"
-    data = html.escape(json.dumps({"id": s["id"], "title": s["title"], "total": s["total"], "cues": s["cues"]}), quote=True)
+    data = html.escape(json.dumps({"id": s["id"], "title": s["title"], "total": s["total"], "cues": s["cues"], "speech": SPEECH.get(s["id"], [])}), quote=True)
     transcript = "".join(f"<li><span>{fmt(t)}</span>{html.escape(c)}</li>" for t, c in s["cues"])
     return f'''<article class="session reveal" id="session-{s['id']}" data-session="{data}" aria-labelledby="st-{s['id']}">
   <div class="player" role="group" aria-label="{html.escape(s['title'])} player">
     <video muted loop playsinline preload="none" poster="{v}-poster.webp" aria-label="{html.escape(s['alt'])}" width="1280" height="720">
       <source src="{v}.webm" type="video/webm"><source src="{v}.mp4" type="video/mp4">
     </video>
-    <audio preload="none" src="{r}assets/audio/{s['id']}.mp3"></audio>
+    <audio data-track="voice" preload="none" src="{r}assets/audio/{s['id']}-voice.mp3"></audio>
+    <audio data-track="music" preload="none" src="{r}assets/audio/{s['id']}-music.mp3"></audio>
     <div class="player-veil" aria-hidden="true"></div>
     <p class="caption" aria-live="polite"></p>
     <button class="big-play" type="button" aria-label="Begin {html.escape(s['title'])}">{PLAY_ICON}<span>Begin · {s['mins']} min</span></button>
@@ -115,7 +122,8 @@ def session_player(s, r, heading="h2"):
       <button type="button" class="pbtn" data-play aria-label="Play" aria-pressed="false">{PLAY_ICON}</button>
       <input class="seek" type="range" min="0" max="{s['total']}" step="1" value="0" aria-label="Session position">
       <span class="ptime">0:00 / {fmt(s['total'])}</span>
-      <button type="button" class="pbtn voice" data-voice aria-pressed="false" title="Spoken guidance">{VOICE_ICON}<span>Voice off</span></button>
+      <button type="button" class="pbtn voice" data-voice aria-pressed="true" aria-label="Spoken guidance" title="Spoken guidance">{VOICE_ICON}<span>Voice on</span></button>
+      <span class="music-ctl"><button type="button" class="pbtn music" data-music aria-pressed="true" aria-label="Background music" title="Background music">{MUSIC_ICON}<span>Music on</span></button><input class="mvol" data-mvol type="range" min="0" max="1" step="0.05" value="0.8" aria-label="Music volume"></span>
       <button type="button" class="pbtn" data-fs aria-label="Full screen">{FS_ICON}</button>
     </div>
     <p class="sr-only" data-announce aria-live="polite"></p>

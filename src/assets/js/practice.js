@@ -222,60 +222,95 @@
     build(); phraseEl.classList.add('in');
   });
 
-  /* ---------- Guided video sessions ---------- */
+  /* ---------- Guided video sessions ----------
+     One session clock drives captions, the voice track and the music track (both plain <audio>, started from the
+     user's tap so iOS allows them). Music volume + ducking go through a Web Audio gain node where that is safe
+     (everywhere except older iOS, where media.volume is read-only and Web Audio obeys the mute switch). */
   const players = [];
+  const AC = window.AudioContext || window.webkitAudioContext;
+  const iOS = /iP(hone|ad|od)/.test(navigator.platform || '') || (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
+  try{ if(navigator.audioSession) navigator.audioSession.type = 'playback'; }catch(e){}
+  const canRoute = !!AC && (!iOS || !!navigator.audioSession);
+  const DUCK = 0.63;   /* about -4 dB extra under the voice while it speaks */
   $$('[data-session]').forEach(root => {
-    const data = JSON.parse(root.dataset.session); const total = data.total; const cues = data.cues;
-    const video = $('video', root), audio = $('audio', root), cap = $('.caption', root), seek = $('.seek', root), timeEl = $('.ptime', root);
-    const playBtn = $('[data-play]', root), bigBtn = $('.big-play', root), voiceBtn = $('[data-voice]', root), fsBtn = $('[data-fs]', root), player = $('.player', root), status = $('[data-announce]', root);
-    let elapsed = 0, playing = false, last = 0, raf = null, cueIdx = -1, voice = store.get('wh-voice', false), audioOk = true, fadeT = null;
-    seek.max = total;
+    const data = JSON.parse(root.dataset.session); const total = data.total; const cues = data.cues; const speech = data.speech || [];
+    const video = $('video', root), audio = $('audio[data-track="voice"]', root), music = $('audio[data-track="music"]', root);
+    const cap = $('.caption', root), seek = $('.seek', root), timeEl = $('.ptime', root);
+    const playBtn = $('[data-play]', root), bigBtn = $('.big-play', root), voiceBtn = $('[data-voice]', root), musicBtn = $('[data-music]', root), volEl = $('[data-mvol]', root);
+    const fsBtn = $('[data-fs]', root), player = $('.player', root), status = $('[data-announce]', root);
+    let elapsed = 0, playing = false, last = 0, raf = null, cueIdx = -1, fadeT = null;
+    let voice = store.get('wh-voice-v2', true), audioOk = !!audio, musicOn = store.get('wh-music', true), musicOk = !!music;
+    let vol = +store.get('wh-music-vol', 0.8), gain = null, routed = false, lastGain = -1;
+    seek.max = total; if(volEl) volEl.value = vol;
     function setVoiceUI(){ voiceBtn.setAttribute('aria-pressed', String(voice)); voiceBtn.querySelector('span').textContent = voice ? 'Voice on' : 'Voice off'; }
+    function setMusicUI(){ if(!musicBtn) return; musicBtn.setAttribute('aria-pressed', String(musicOn)); musicBtn.querySelector('span').textContent = musicOn ? 'Music on' : 'Music off';
+      if(volEl) volEl.disabled = !musicOn; }
     function cueAt(t){ let k = -1; for(let j = 0; j < cues.length; j++){ if(cues[j][0] <= t) k = j; else break; } return k; }
+    function speaking(t){ for(const [a, b] of speech){ if(t >= a - 0.3 && t <= b + 0.6) return true; if(a > t) break; } return false; }
     function showCue(k, speak){ cueIdx = k; const text = k >= 0 ? cues[k][1] : '';
       clearTimeout(fadeT); cap.classList.remove('in');
       fadeT = setTimeout(() => { cap.textContent = text; if(text) cap.classList.add('in'); }, reduce ? 0 : 650);
       if(speak && voice && !audioOk && text) Speech.say(text); }
     function ui(){ seek.value = Math.floor(elapsed); timeEl.textContent = fmt(elapsed) + ' / ' + fmt(total);
       seek.setAttribute('aria-valuetext', fmt(elapsed) + ' of ' + fmt(total)); root.style.setProperty('--p', (elapsed / total * 100) + '%'); }
+    /* music level: slider volume, ducked while the narration speaks */
+    function route(){ if(routed || !canRoute || !music) return; routed = true;
+      try{ const ctx = Bell.init(); if(!ctx) return; const src = ctx.createMediaElementSource(music); gain = ctx.createGain(); gain.gain.value = vol; src.connect(gain); gain.connect(ctx.destination); }
+      catch(e){ gain = null; } }
+    function level(force){ if(!music) return; const g = vol * (voice && audioOk && speaking(elapsed) ? DUCK : 1);
+      if(!force && Math.abs(g - lastGain) < 0.001) return; lastGain = g;
+      if(gain){ const ctx = Bell.ctx; gain.gain.cancelScheduledValues(ctx.currentTime); gain.gain.setTargetAtTime(g, ctx.currentTime, force ? 0.05 : 0.4); }
+      else { try{ music.volume = Math.max(0, Math.min(1, g)); }catch(e){} } }
     let lastSync = 0;
-    function syncAudio(now, force){
-      if(!(voice && audioOk && audio && playing)) return;
-      if(audio.readyState >= 1 && (force || Math.abs(audio.currentTime - elapsed) > 0.75) && (force || now - lastSync > 1500)){
-        lastSync = now; try{ audio.currentTime = elapsed; }catch(e){} }
-      if(audio.paused && !audio.ended){ const p = audio.play(); if(p && p.catch) p.catch(() => { audioOk = false; }); }
+    function keep(el, on, now, force){
+      if(!(el && on && playing)) return;
+      if(el.readyState >= 1 && (force || (Math.abs(el.currentTime - elapsed) > 0.75 && now - lastSync > 1500))){
+        lastSync = now; try{ el.currentTime = Math.min(elapsed, (el.duration || total) - 0.05); }catch(e){} }
+      if(el.paused && !el.ended){ const p = el.play(); if(p && p.catch) p.catch(err => { if(err && err.name === 'NotAllowedError') return; if(el === audio) audioOk = false; else musicOk = false; }); }
     }
+    function syncAll(now, force){ keep(audio, voice && audioOk, now, force); keep(music, musicOn && musicOk, now, force); }
     function frame(now){ if(!playing) return;
-      elapsed += Math.min(0.25, (now - last) / 1000); last = now;   /* session clock; narration follows it */
+      elapsed += Math.min(0.25, (now - last) / 1000); last = now;   /* session clock; voice + music follow it */
       if(elapsed >= total){ end(); return; }
       const k = cueAt(elapsed); if(k !== cueIdx) showCue(k, true);
-      syncAudio(now, false); ui(); raf = requestAnimationFrame(frame); }
-    function startAudio(){ if(!(voice && audioOk && audio)) return;
-      if(audio.readyState < 1){ audio.preload = 'auto'; audio.addEventListener('loadedmetadata', () => syncAudio(performance.now(), true), {once: true}); }
-      syncAudio(performance.now(), true); }
+      syncAll(now, false); level(false); ui(); raf = requestAnimationFrame(frame); }
+    function prime(el){ if(el && el.readyState < 1){ el.preload = 'auto'; el.addEventListener('loadedmetadata', () => keep(el, el === audio ? voice && audioOk : musicOn && musicOk, performance.now(), true), {once: true}); } }
+    function startTracks(){ if(voice && audioOk) prime(audio); if(musicOn && musicOk){ route(); prime(music); }
+      level(true); syncAll(performance.now(), true); }   /* play() is called synchronously inside the tap */
     function play(){ players.forEach(p => p !== api && p.pause()); Bell.init();
       if(elapsed === 0) Bell.ring(0.3);
       playing = true; root.classList.add('playing', 'started'); playBtn.setAttribute('aria-label','Pause'); playBtn.setAttribute('aria-pressed','true');
       if(!reduce){ const p = video.play(); if(p && p.catch) p.catch(() => {}); }
-      startAudio(); last = performance.now(); cueIdx = -2; raf = requestAnimationFrame(frame); status.textContent = 'Playing ' + data.title; }
+      startTracks(); last = performance.now(); cueIdx = -2; raf = requestAnimationFrame(frame); status.textContent = 'Playing ' + data.title; }
     function pause(){ if(!playing) return; playing = false; cancelAnimationFrame(raf); root.classList.remove('playing'); playBtn.setAttribute('aria-label','Play'); playBtn.setAttribute('aria-pressed','false');
-      video.pause(); if(audio) audio.pause(); Speech.stop(); status.textContent = 'Paused'; }
+      video.pause(); if(audio) audio.pause(); if(music) music.pause(); Speech.stop(); status.textContent = 'Paused'; }
     function end(){ pause(); elapsed = 0; ui(); Bell.ring(0.3); setTimeout(() => Bell.ring(0.22), 2400);
+      [audio, music].forEach(el => { if(el) try{ el.currentTime = 0; }catch(e){} });
       root.classList.remove('started'); cap.textContent = 'Session complete. Thank you for practicing.'; cap.classList.add('in'); status.textContent = 'Session complete'; cueIdx = -1;
       const done = store.get('wh-guided-done', {}); done[data.id] = (done[data.id] || 0) + 1; store.set('wh-guided-done', done); }
-    function seekTo(t){ elapsed = Math.max(0, Math.min(total - 0.5, t)); lastSync = 0; showCue(cueAt(elapsed), false); cueIdx = cueAt(elapsed); ui(); syncAudio(performance.now(), true); }
+    function seekTo(t){ elapsed = Math.max(0, Math.min(total - 0.5, t)); lastSync = 0; showCue(cueAt(elapsed), false); cueIdx = cueAt(elapsed); ui();
+      [audio, music].forEach(el => { if(el && el.readyState >= 1) try{ el.currentTime = elapsed; }catch(e){} }); level(true); syncAll(performance.now(), true); }
     const api = {pause};
     players.push(api);
     playBtn.addEventListener('click', () => playing ? pause() : play());
     bigBtn.addEventListener('click', () => { play(); playBtn.focus(); });
     seek.addEventListener('input', () => seekTo(+seek.value));
-    voiceBtn.addEventListener('click', () => { voice = !voice; store.set('wh-voice', voice); setVoiceUI();
-      if(voice){ if(playing){ if(audioOk) startAudio(); else if(cueIdx >= 0) Speech.say(cues[cueIdx][1]); } }
-      else { if(audio) audio.pause(); Speech.stop(); } });
-    if(audio){ audio.addEventListener('error', () => { audioOk = false; }); audio.addEventListener('ended', () => {}); }
+    voiceBtn.addEventListener('click', () => { voice = !voice; store.set('wh-voice-v2', voice); setVoiceUI();
+      if(voice){ if(playing){ if(audioOk){ prime(audio); keep(audio, true, performance.now(), true); } else if(cueIdx >= 0) Speech.say(cues[cueIdx][1]); } }
+      else { if(audio) audio.pause(); Speech.stop(); }
+      level(true); });
+    if(musicBtn) musicBtn.addEventListener('click', () => { musicOn = !musicOn; store.set('wh-music', musicOn); setMusicUI();
+      if(musicOn){ if(playing && musicOk){ route(); prime(music); level(true); keep(music, true, performance.now(), true); } }
+      else if(music) music.pause(); });
+    if(volEl) volEl.addEventListener('input', () => { vol = +volEl.value; store.set('wh-music-vol', vol); level(true); });
+    if(audio) audio.addEventListener('error', () => { audioOk = false; if(voice && playing && cueIdx >= 0) Speech.say(cues[cueIdx][1]); level(true); });
+    if(music) music.addEventListener('error', () => { musicOk = false; if(musicBtn) musicBtn.closest('.music-ctl').hidden = true; });
+    if(music && !canRoute && iOS && volEl) volEl.hidden = true;   /* older iOS: volume is fixed by the hardware buttons */
     fsBtn.addEventListener('click', () => { const d = document; if(d.fullscreenElement){ d.exitFullscreen(); } else if(player.requestFullscreen){ player.requestFullscreen().catch(() => {}); } else if(video.webkitEnterFullscreen){ video.webkitEnterFullscreen(); } });
-    player.addEventListener('keydown', e => { if(e.target === seek) return; if(e.key === ' ' || e.key === 'k'){ if(e.target.tagName === 'BUTTON') return; e.preventDefault(); playing ? pause() : play(); } });
-    document.addEventListener('visibilitychange', () => { if(document.hidden && playing && !(voice && audioOk)) pause(); });
-    setVoiceUI(); ui();
+    player.addEventListener('keydown', e => { if(e.target === seek || e.target === volEl) return; if(e.key === ' ' || e.key === 'k'){ if(e.target.tagName === 'BUTTON') return; e.preventDefault(); playing ? pause() : play(); } });
+    document.addEventListener('visibilitychange', () => { if(document.hidden && playing && !((voice && audioOk) || (musicOn && musicOk))) pause(); });
+    /* if the video goes native-fullscreen on iOS and the user pauses/plays there, follow it */
+    video.addEventListener('webkitendfullscreen', () => { if(playing){ const p = video.play(); if(p && p.catch) p.catch(() => {}); } });
+    setVoiceUI(); setMusicUI(); ui();
   });
 })();

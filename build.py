@@ -98,7 +98,7 @@ def head(title, desc, path, r, img="og-image.jpg", otype="website"):
 <link rel="icon" href="{r}favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="{r}apple-touch-icon.png">
 {FONTS}
-<link rel="stylesheet" href="{r}assets/css/style.css">
+<link rel="stylesheet" href="{r}assets/css/style.css?v=3">
 <script>document.documentElement.classList.remove('no-js')</script>
 </head>'''
 
@@ -128,7 +128,7 @@ def footer(r, extra_js=False):
     <div class="footer-bottom"><span>© 2026 {SITE['name']}. Written with care.</span><span>Breathe in. Breathe out. You're here.</span></div>
   </div>
 </footer>
-<script src="{r}assets/js/main.js" defer></script>{f'<script src="{r}assets/js/practice.js" defer></script>' if extra_js else ''}
+<script src="{r}assets/js/main.js" defer></script>{f'<script src="{r}assets/js/practice.js?v=3" defer></script>' if extra_js else ''}
 </body></html>'''
 
 def card(p, r, delay=0, soon=False):
@@ -417,18 +417,18 @@ def practice():
 def guided():
     r = ""
     sess = "".join(session_player(s, r) for s in SESSIONS)
-    return head("Guided meditations", "Free guided meditation videos from Willowhush: a 3-minute breath, a 5-minute body scan, an evening wind-down, and loving-kindness, with soft captions and optional voice.", "guided.html", r, img="og-image.jpg") + header(r, "Guided") + f'''
+    return head("Guided meditations", "Free guided meditation videos from Willowhush: a 3-minute breath, a 5-minute body scan, an evening wind-down, and loving-kindness, with a calm voice, ambient music and soft captions.", "guided.html", r, img="og-image.jpg") + header(r, "Guided") + f'''
 <main id="main">
   <header class="page-hero"><div class="container">
     <span class="eyebrow reveal">Guided meditations</span>
     <h1 class="reveal d1">Sit with us a while</h1>
-    <p class="reveal d2">Choose a session, press begin, and let the scene and the words lead. Gentle captions appear as you go; switch the voice on if you'd like to close your eyes.</p>
+    <p class="reveal d2">Choose a session, press begin, and let the scene and the words lead. A soft voice and quiet ambient music guide you, with gentle captions as you go; switch either off whenever you like.</p>
   </div></header>
   <section style="padding-top:2rem"><div class="container">
     <div class="sessions">{sess}</div>
   </div></section>
   <section class="posts" aria-label="About these sessions" style="padding:4rem 0"><div class="container">
-    <p class="guided-note">Headphones help. The voice is a calm, computer-generated narrator, and the footage was generated for Willowhush. If you'd rather keep the screen still, your device's reduced-motion setting is respected: the scene pauses and only the captions change. These sessions are for everyday wellbeing and aren't a substitute for medical or mental-health care.</p>
+    <p class="guided-note">Headphones help. The voice is a calm, computer-generated narrator (Kokoro TTS), the ambient music was composed and synthesized for Willowhush, and the footage was generated for Willowhush. If you'd rather keep the screen still, your device's reduced-motion setting is respected: the scene pauses and only the captions change. These sessions are for everyday wellbeing and aren't a substitute for medical or mental-health care.</p>
     <p style="text-align:center;margin-top:2rem"><a class="btn btn-outline" href="practice.html">Explore interactive practices</a></p>
   </div></section>
 </main>''' + footer(r, extra_js=True)
